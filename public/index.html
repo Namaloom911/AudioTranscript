@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP3 Transcriber</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f4f4f4; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+        }
+        h1 { 
+            text-align: center; 
+        }
+        label { 
+            display: block; 
+            margin: 10px 0 5px; 
+            font-weight: bold; 
+        }
+        input[type="file"] { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            margin-bottom: 15px; 
+        }
+        button { 
+            display: block; 
+            margin: 10px auto; 
+            padding: 10px 20px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 16px; 
+        }
+        button:hover { 
+            background: #0056b3; 
+        }
+        .results { 
+            margin-top: 20px; 
+        }
+        .result { 
+            background: #e9ecef; 
+            padding: 10px; 
+            margin: 5px 0; 
+            border-radius: 5px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MP3 Transcriber</h1>
+
+        <label for="fileInput">Upload MP3 Files:</label>
+        <input type="file" id="fileInput" multiple accept=".mp3" />
+        
+        <button id="uploadBtn">Upload and Transcribe</button>
+        
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadBtn').onclick = async function() {
+            const files = document.getElementById('fileInput').files;
+
+            if (files.length === 0) {
+                alert('Please select MP3 files.');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('files', file);
+            }
+
+            // Send the files to the server
+            fetch('http://localhost:3000/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const eventSource = new EventSource('http://localhost:3000/events');
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            eventSource.addEventListener('message', function (event) {
+                const result = JSON.parse(event.data);
+                
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result';
+                resultDiv.innerHTML = `<strong>${result.fileName}</strong>: ${result.transcription}`;
+                resultsDiv.appendChild(resultDiv);
+            });
+
+            eventSource.addEventListener('complete', function () {
+                const completeMessage = document.createElement('p');
+                completeMessage.textContent = 'All files have been processed.';
+                resultsDiv.appendChild(completeMessage);
+                eventSource.close(); 
+            });
+        };
+    </script>
+</body>
+</html>
