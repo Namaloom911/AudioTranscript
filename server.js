@@ -3,9 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { Worker } = require('worker_threads');
-
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static'); 
+const ffmpegPath = require('ffmpeg-static');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -21,7 +20,6 @@ function getAudioDuration(filePath) {
     });
 }
 
-
 const app = express();
 const PORT = 3000;
 app.use(express.static(path.join(__dirname, 'public')));
@@ -36,13 +34,14 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
 function runTranscriberWorker(filePath) {
     return new Promise((resolve, reject) => {
         const worker = new Worker(path.join(__dirname, 'transcriber.js'), {
-            workerData: filePath, 
+            workerData: filePath,
         });
 
-        worker.on('message', resolve); 
+        worker.on('message', resolve);
         worker.on('error', reject);
         worker.on('exit', (code) => {
             if (code !== 0) {
@@ -75,10 +74,11 @@ function sendTranscriptionUpdate(fileName, transcription) {
         client.write(`data: ${JSON.stringify({ fileName, transcription })}\n\n`);
     });
 }
+
 app.post('/upload', upload.array('files'), async (req, res) => {
     const files = req.files;
     const totalFiles = files.length;
-    const maxWorkers = 4; 
+    const batchSize = 10; // Adjust batch size based on memory capacity
     const promises = [];
 
     if (totalFiles === 0) {
@@ -90,7 +90,7 @@ app.post('/upload', upload.array('files'), async (req, res) => {
     for (let i = 0; i < totalFiles; i++) {
         const file = files[i];
         console.log(`Processing file ${i + 1} of ${totalFiles}: ${file.originalname}`);
-        const filePath = path.join(__dirname, file.path); 
+        const filePath = path.join(__dirname, file.path);
 
         const startTime = Date.now();
 
@@ -101,10 +101,6 @@ app.post('/upload', upload.array('files'), async (req, res) => {
             console.error(`Error getting duration for ${file.originalname}: ${err.message}`);
         }
 
-        while (promises.length >= maxWorkers) {
-            await Promise.race(promises); 
-        }
-
         const promise = runTranscriberWorker(filePath)
             .then(transcription => {
                 console.log(`Completed processing: ${file.originalname}`);
@@ -112,20 +108,25 @@ app.post('/upload', upload.array('files'), async (req, res) => {
             })
             .catch(error => {
                 console.error(`Error processing file ${file.originalname}: ${error.message}`);
-                sendTranscriptionUpdate(file.originalname, null); 
+                sendTranscriptionUpdate(file.originalname, null);
             })
             .finally(() => {
                 fs.unlinkSync(filePath);
 
                 const endTime = Date.now();
-                const timeTaken = (endTime - startTime) / 60000; 
+                const timeTaken = (endTime - startTime) / 60000;
                 console.log(`Processing time for ${file.originalname}: ${timeTaken.toFixed(2)} minutes`);
             });
 
         promises.push(promise);
+
+        // Process batch
+        if (promises.length === batchSize || i === totalFiles - 1) {
+            await Promise.all(promises);
+            promises.length = 0; // Clear the promises array for the next batch
+        }
     }
 
-    await Promise.all(promises);
     console.log(`All files processed.`);
     clients.forEach(client => client.write('event: complete\n\n'));
 
