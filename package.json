@@ -2,11 +2,7 @@
   "name": "mp3-transcriber",
   "version": "1.0.0",
   "main": "index.js",
-<<<<<<< HEAD
-"scripts": {
-=======
  "scripts": {
->>>>>>> 0753b36 (audio transcription package.json)
   "start": "node server.js",
   "build": "echo 'Nothing to build'"
 }
