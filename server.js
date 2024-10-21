@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises; 
 const { Worker } = require('worker_threads');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
@@ -26,10 +26,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/'); 
+        cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, file.originalname); 
+        cb(null, file.originalname);
     },
 });
 
@@ -75,10 +75,21 @@ function sendTranscriptionUpdate(fileName, transcription) {
     });
 }
 
+async function clearUploadFolder() {
+    const dir = path.join(__dirname, 'uploads');
+    try {
+        const files = await fs.readdir(dir);
+        await Promise.all(files.map(file => fs.unlink(path.join(dir, file))));
+        console.log('All files in the uploads folder have been deleted.');
+    } catch (err) {
+        console.error(`Error clearing upload folder: ${err.message}`);
+    }
+}
+
 app.post('/upload', upload.array('files'), async (req, res) => {
     const files = req.files;
     const totalFiles = files.length;
-    const batchSize = 10; // Adjust batch size based on memory capacity
+    const batchSize = 2; 
     const promises = [];
 
     if (totalFiles === 0) {
@@ -89,10 +100,13 @@ app.post('/upload', upload.array('files'), async (req, res) => {
 
     for (let i = 0; i < totalFiles; i++) {
         const file = files[i];
-        console.log(`Processing file ${i + 1} of ${totalFiles}: ${file.originalname}`);
         const filePath = path.join(__dirname, file.path);
+        console.log(`Processing file ${i + 1} of ${totalFiles}: ${file.originalname}`);
 
         const startTime = Date.now();
+
+    
+        console.log(`File created: ${filePath}`);
 
         try {
             const duration = await getAudioDuration(filePath);
@@ -109,26 +123,21 @@ app.post('/upload', upload.array('files'), async (req, res) => {
             .catch(error => {
                 console.error(`Error processing file ${file.originalname}: ${error.message}`);
                 sendTranscriptionUpdate(file.originalname, null);
-            })
-            .finally(() => {
-                fs.unlinkSync(filePath);
-
-                const endTime = Date.now();
-                const timeTaken = (endTime - startTime) / 60000;
-                console.log(`Processing time for ${file.originalname}: ${timeTaken.toFixed(2)} minutes`);
             });
 
         promises.push(promise);
 
-        // Process batch
         if (promises.length === batchSize || i === totalFiles - 1) {
             await Promise.all(promises);
-            promises.length = 0; // Clear the promises array for the next batch
+            promises.length = 0; 
         }
     }
 
     console.log(`All files processed.`);
     clients.forEach(client => client.write('event: complete\n\n'));
+
+    
+    await clearUploadFolder();
 
     res.status(200).json({ message: 'Files are being processed in real-time.' });
 });

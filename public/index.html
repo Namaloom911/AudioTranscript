@@ -58,6 +58,14 @@
             margin: 5px 0; 
             border-radius: 5px; 
         }
+        .agent { 
+            color: blue; 
+            font-weight: bold; 
+        }
+        .customer { 
+            color: green; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -70,41 +78,52 @@
         <button id="uploadBtn">Upload and Transcribe</button>
         
         <div class="results" id="results"></div>
-    </div>
-
-    <script>
+    </div><script>
         document.getElementById('uploadBtn').onclick = async function() {
             const files = document.getElementById('fileInput').files;
-
+    
             if (files.length === 0) {
                 alert('Please select MP3 files.');
                 return;
             }
-
+    
             const formData = new FormData();
             for (let file of files) {
                 formData.append('files', file);
             }
-
+    
             // Send the files to the server
             fetch('http://localhost:3000/upload', {
                 method: 'POST',
                 body: formData,
             });
-
+    
             const eventSource = new EventSource('http://localhost:3000/events');
-
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = '';
+    
             eventSource.addEventListener('message', function (event) {
                 const result = JSON.parse(event.data);
-                
                 const resultDiv = document.createElement('div');
                 resultDiv.className = 'result';
-                resultDiv.innerHTML = `<strong>${result.fileName}</strong>: ${result.transcription}`;
+    
+                // Format transcription by identifying agent and customer lines
+                const transcriptionLines = result.transcription.split('\n');
+                const formattedLines = transcriptionLines.map(line => {
+                    if (line.includes('Agent')) {
+                        return `<span class="agent">${line}</span>`;
+                    } else if (line.includes('Customer')) {
+                        return `<span class="customer">${line}</span>`;
+                    } else {
+                        return line; // Regular line
+                    }
+                }).join('<br>');
+    
+                // Append the transcription as it is received
+                resultDiv.innerHTML = `<strong>${result.fileName}</strong>:<br>${formattedLines}`;
                 resultsDiv.appendChild(resultDiv);
             });
-
+    
             eventSource.addEventListener('complete', function () {
                 const completeMessage = document.createElement('p');
                 completeMessage.textContent = 'All files have been processed.';
@@ -113,5 +132,6 @@
             });
         };
     </script>
-</body>
+    
+    </body>
 </html>
