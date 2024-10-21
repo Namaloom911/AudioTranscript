@@ -3,7 +3,7 @@ import whisper
 import sys
 import os
 import torch
-from pydub import AudioSegment  # For audio manipulation
+from pydub import AudioSegment  
 from threading import Lock
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -29,15 +29,13 @@ def convert_mp3_to_wav(mp3_path, wav_path):
 def split_channels(audio_path):
     """Split stereo audio into left and right channels using pydub."""
     try:
-        audio = AudioSegment.from_file(audio_path)  # Load the audio file
+        audio = AudioSegment.from_file(audio_path) 
         if audio.channels != 2:
             raise ValueError("Audio is not stereo. It must have two channels (left and right).")
         
-        # Split the stereo audio into left and right channels
         left_channel = audio.split_to_mono()[0]
         right_channel = audio.split_to_mono()[1]
         
-        # Save the split channels as separate wav files
         left_audio_path = "left_channel.wav"
         right_audio_path = "right_channel.wav"
         left_channel.export(left_audio_path, format="wav")
@@ -52,36 +50,30 @@ def transcribe(audio_path):
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"File not found: {audio_path}")
 
-    # Convert mp3 to wav if needed
     wav_path = audio_path.replace(".mp3", ".wav")
     if audio_path.endswith(".mp3") and not os.path.exists(wav_path):
         wav_path = convert_mp3_to_wav(audio_path, wav_path)
         if not wav_path:
-            return None  # Exit if conversion fails
+            return None 
 
     print(f"Transcribing: {wav_path}...")
 
     try:
-        # Split the stereo channels
         left_audio_path, right_audio_path = split_channels(wav_path)
         if not left_audio_path or not right_audio_path:
             return None
 
         with lock:
-            # Transcribe left channel (Agent)
             print("Transcribing left channel (Agent)...")
             left_result = model.transcribe(left_audio_path, fp16=torch.cuda.is_available())
             left_transcription = left_result['text']
             
-            # Transcribe right channel (Customer)
             print("Transcribing right channel (Customer)...")
             right_result = model.transcribe(right_audio_path, fp16=torch.cuda.is_available())
             right_transcription = right_result['text']
 
-        # Combine transcriptions with labels
         transcription = f"Agent (Left): {left_transcription}\nCustomer (Right): {right_transcription}"
         
-        # Clean up temporary files
         os.remove(left_audio_path)
         os.remove(right_audio_path)
 

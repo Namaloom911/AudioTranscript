@@ -92,7 +92,6 @@
                 formData.append('files', file);
             }
     
-            // Send the files to the server
             fetch('http://localhost:3000/upload', {
                 method: 'POST',
                 body: formData,
@@ -107,7 +106,6 @@
                 const resultDiv = document.createElement('div');
                 resultDiv.className = 'result';
     
-                // Format transcription by identifying agent and customer lines
                 const transcriptionLines = result.transcription.split('\n');
                 const formattedLines = transcriptionLines.map(line => {
                     if (line.includes('Agent')) {
@@ -115,11 +113,10 @@
                     } else if (line.includes('Customer')) {
                         return `<span class="customer">${line}</span>`;
                     } else {
-                        return line; // Regular line
+                        return line; 
                     }
                 }).join('<br>');
     
-                // Append the transcription as it is received
                 resultDiv.innerHTML = `<strong>${result.fileName}</strong>:<br>${formattedLines}`;
                 resultsDiv.appendChild(resultDiv);
             });

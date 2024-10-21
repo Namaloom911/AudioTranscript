@@ -33,5 +33,5 @@ runTranscriptionWorker(workerData)
     })
     .catch(err => {
         console.error(`Error transcribing audio: ${err.message}`);
-        parentPort.postMessage(null); // Return null in case of error
+        parentPort.postMessage(null); 
     });
