@@ -78,7 +78,7 @@ function sendTranscriptionUpdate(fileName, transcription) {
 app.post('/upload', upload.array('files'), async (req, res) => {
     const files = req.files;
     const totalFiles = files.length;
-    const batchSize = 10; // Adjust batch size based on memory capacity
+    const batchSize =2; // Adjust batch size based on memory capacity
     const promises = [];
 
     if (totalFiles === 0) {

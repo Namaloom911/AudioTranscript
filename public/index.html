@@ -22,6 +22,7 @@
         }
         h1 { 
             text-align: center; 
+            color: #007bff; 
         }
         label { 
             display: block; 
@@ -45,6 +46,7 @@
             border-radius: 5px; 
             cursor: pointer; 
             font-size: 16px; 
+            transition: background 0.3s; 
         }
         button:hover { 
             background: #0056b3; 
@@ -54,9 +56,26 @@
         }
         .result { 
             background: #e9ecef; 
-            padding: 10px; 
-            margin: 5px 0; 
+            padding: 15px; 
+            margin: 10px 0; 
             border-radius: 5px; 
+            color: #333;
+        }
+        .file-name { 
+            font-weight: bold; 
+            color: #007bff; 
+        }
+        .transcription-text { 
+            margin-top: 10px; 
+            color: #555; 
+            line-height: 1.5; 
+            white-space: pre-wrap; 
+        }
+        .complete-message {
+            text-align: center;
+            font-weight: bold;
+            color: #28a745;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -95,21 +114,25 @@
             const eventSource = new EventSource('http://localhost:3000/events');
 
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '';
+            resultsDiv.innerHTML = '<p>Transcribing, please wait...</p>';  // Add loading message
             eventSource.addEventListener('message', function (event) {
                 const result = JSON.parse(event.data);
-                
+
                 const resultDiv = document.createElement('div');
                 resultDiv.className = 'result';
-                resultDiv.innerHTML = `<strong>${result.fileName}</strong>: ${result.transcription}`;
+                resultDiv.innerHTML = `
+                    <div class="file-name">${result.fileName}</div>
+                    <div class="transcription-text">${result.transcription}</div>
+                `;
                 resultsDiv.appendChild(resultDiv);
             });
 
             eventSource.addEventListener('complete', function () {
                 const completeMessage = document.createElement('p');
+                completeMessage.className = 'complete-message';
                 completeMessage.textContent = 'All files have been processed.';
                 resultsDiv.appendChild(completeMessage);
-                eventSource.close(); 
+                eventSource.close();
             });
         };
     </script>
